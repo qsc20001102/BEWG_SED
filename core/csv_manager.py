@@ -40,25 +40,23 @@ class CSVManager:
         output_path = os.path.join(self.base_dir, 'output', output_filename)    #输出文件路径
         os.makedirs(os.path.dirname(output_path), exist_ok=True)    #确保输出目录存在
         #表头
-        headers = ["TagID", "TagName", "Description", "TagType", "TagDataType",
-                   "MaxRawValue", "MinRawValue", "MaxValue", "MinValue", "NonLinearTableName",
-                   "ConvertType", "IsFilter", "DeadBand", "Unit", "ChannelName",
-                   "DeviceName", "ChannelDriver", "DeviceSeries", "DeviceSeriesType", "CollectControl",
-                   "CollectInterval", "CollectOffset", "TimeZoneBias", "TimeAdjustment", "Enable",
-                   "ForceWrite", "ItemName", "RegName", "RegType", "ItemDataType",	
-                   "ItemAccessMode", "HisRecordMode", "HisDeadBand", "HisInterval", "TagGroup",
-                   "NamespaceIndex", "IdentifierType", "Identifier", "ValueRank", "QueueSize",
-                   "DiscardOldest", "MonitoringMode", "TriggerMode", "DeadType", "DeadValue",	
-                   "UANodePath"
+        headers = [";IO#FS0序号", "所属通道", "驱动", "所属设备", "点类型",
+                   "点名", "描述", "初始值", "单位编码", "引用(云)标签",
+                   "提交", "标记", "值域", "权限", "采集周期",
+                   "n[0]", "n[1]", "n[2]", "n[3]", "n[4]", "n[5]", "n[6]", "n[7]", "n[8]", "n[9]", "n[10]", "n[11]", 
+                   "s[0]", "s[1]", "s[2]", "s[3]", "s[4]", "s[5]", "s[6]", "s[7]", "s[8]", "s[9]", "s[10]", "s[11]", 
+                   "opc.vt", "opc.item", "opc.acc", "io.kind", "io.mode", "io.obj",
+                   "io.path", "模拟量>>>取绝对值", "CTPT", "系数标记", "系数倍率",
+                   "基数", "基础倍率", "阈值开关", "阈值", "量程变换", 
+                   "裸数据上限","裸数据下限", "量程上限", "量程下限", "数字量>>>采集取反", 
+                   "真值描述", "假值描述", "防抖周期"
         ]
         #固定数据
-        fixeddata1 = ["0","否","1000","0","0","0","是","否"]
-        fixeddata2 = ["不记录","0","60"]
-        fixeddata3 = ["0","0","","-1","1","0","0","0","0","0",""]
+        fixeddata2 = ["","","","0","0","0","0","1000","3"]
+        fixeddata3 = ["0","0","0","0","0","0","0","","","","","","","","","","","","","0","","","0","0","","","0","0","0","0","0","1","0"]
         #依据数据类型变化数据
-        DataType_IODisc = ["","","","","","","",""]
-        DataType_IOShort = ["32767","-32767","32767","-32767","","无","否","0"]
-        DataType_IOFloat = ["1000000000","-1000000000","1000000000","-1000000000","","无","否","0"]
+        DataType_1 = ["0","1","1000000000","0","1000000000","0","0","合","分","0"]
+        DataType_2 = ["0.001","0","100","0","1000","0","0","","","0"]
 
         rows = []
         count = 0
@@ -67,7 +65,7 @@ class CSVManager:
             desc = device_row['设备描述']
             #拼接地址处理
             if user_inputs['device'] == "SIEMENS":
-                base_offset = float(device_row['拼接地址'])
+                base_offset = int(device_row['拼接地址'])
             else:
                 base_offset = device_row['拼接地址']
             #每个设备遍历模板数据
@@ -75,70 +73,54 @@ class CSVManager:
                 TagName = f"{code}{tpl['name']}"    #点名拼接
                 Description = f"{desc}{tpl['desc']}"    #描述拼接   
                 #数据类型相关数据处理      
-                if tpl['type'] =="IOFloat":
-                    DataType = DataType_IOFloat
-                    ItemDataType = "FLOAT"
-                elif tpl['type'] =="IOShort":
-                    DataType = DataType_IOShort
-                    ItemDataType = "SHORT"
+                if tpl['type'] =="1":
+                    DataType = DataType_1
+                elif tpl['type'] =="2":
+                    DataType = DataType_2      
                 else:
-                    DataType = DataType_IODisc
-                    ItemDataType = "BIT"
-                #链路相关数据处理
-                if user_inputs['link'] == "COM":
-                    ChannelName = f"{user_inputs['link']}{user_inputs['link_com']}"
-                elif user_inputs['link'] == "以太网":
-                    ChannelName = f"{user_inputs['link']}<{user_inputs['link_ip']}>"
-                else:
-                    ChannelName = ""
+                    DataType = ["","","","","","","","","",""]
                 #设备类型相关数据处理，主要是采集地址拼接
                 if user_inputs['device'] == "SIEMENS":
-                    if tpl['type'] == "IODisc":
-                        ItemName = f"DB{user_inputs['db_num']}.{base_offset + float(tpl['address']):.1f}"
+                    n1 = int(base_offset) + int(tpl['addbyte'])
+                    n2 = user_inputs['db_num']
+                    if tpl['type'] == "2":
+                        n3 ="0"
+                        n4 = tpl['addbit']
                     else:
-                        ItemName = f"DB{user_inputs['db_num']}.{int(base_offset) + int(tpl['address'])}"
-                    RegName = "DB"
-                    RegType = "3"
+                        n3 = "7"
+                        n4 = "0"
                 elif user_inputs['device'] == "AB":
-                    if tpl['address'] != "":
-                        ItemName = f"TAG{base_offset}.{tpl['address']}"
+                    n1 = int(base_offset) + int(tpl['addbyte'])
+                    n2 = user_inputs['db_num']
+                    if tpl['type'] == "2":
+                        n3 ="0"
+                        n4 = tpl['addbit']
                     else:
-                        ItemName = ""
-                    RegName = "TAG"
-                    RegType = "0"
+                        n3 = "7"
+                        n4 = tpl['addbit']
                 else:
-                    ItemName = ""
-                    RegName = ""
-                    RegType = ""
-                #是否启用设备分组处理
-                if user_inputs['group_name_en'] == "启用":
-                    group_name = f"{user_inputs['group_name']}.{code}"
-                else:
-                    group_name = user_inputs['group_name']
+                    n3 = ""
+                    n4 = ""
+
                 #每行数据的变量部分
                 row = [
-                    int(user_inputs['start_id']) + count,
+                    "",
+                    user_inputs['channel'],
+                    user_inputs['drive'],
+                    user_inputs['dev_name'],
+                    tpl['type'],
                     TagName,
                     Description,
-                    "用户变量",
-                    tpl['type'],
-                    "",
-                    ChannelName,
-                    user_inputs['device_name'],
-                    user_inputs['channeldriver'],
-                    user_inputs['deviceseries'],
-                    ItemName, 
-                    RegName,
-                    RegType,
-                    ItemDataType,
-                    tpl['access'],
-                    group_name
+                    n1, 
+                    n2,
+                    n3,
+                    n4,
+                    
                 ]     
                 #每行数据的固定数据插入
-                row[5:5]=DataType
-                row[18:18]=fixeddata1
-                row[31:31]=fixeddata2
-                row[35:35]=fixeddata3
+                row[7:7]=fixeddata2
+                row[21:21]=fixeddata3    
+                row[55:55]=DataType             
                 rows.append(row)
                 count += 1
         #写入输出文件

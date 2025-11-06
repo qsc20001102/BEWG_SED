@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class MainUI:
     def __init__(self, root, base_dir):
         self.root = root
-        self.root.title("KingSCADA 点表生成工具")   # 窗口标题
+        self.root.title("BEWG SED 点表生成")   # 窗口标题
         self.root.geometry("1000x400")  # 窗口大小
         root.resizable(False, False)    # 禁止水平和垂直调整大小
         
@@ -51,13 +51,13 @@ class MainUI:
         #选择完成事件
         self.template_cb['combobox'].bind('<<ComboboxSelected>>', self.on_template_selected)
         # 模板显示表格
-        self.template_table = ttk.Treeview(frame, columns=("name","desc","type","access","address"), show="headings", height=5)
+        self.template_table = ttk.Treeview(frame, columns=("name","desc","type","addbyte","addbit"), show="headings", height=5)
         col_defs = {
             "name": ("名称", 100),
             "desc": ("描述", 130),
             "type": ("类型", 100),
-            "access": ("读写", 80),
-            "address": ("地址", 78),
+            "addbyte": ("偏移字节", 80),
+            "addbit": ("偏移位", 80),
         }      
         for col, (text, width) in col_defs.items():
             self.template_table.heading(col, text=text)
@@ -69,25 +69,6 @@ class MainUI:
         # 获取目录下的所有模板文件
         device = self.device_cb['var'].get()
         self.template_cb['combobox']['values'] = self.template_manager.get_templates_by_device(device)
-        #更新参数区的内容
-        if device == "SIEMENS" :
-            for row in self.template_table.get_children():  #清空表格
-                self.template_table.delete(row)
-            self.template_cb['var'].set("") #清空模板选择
-            self.deviceseries['combobox']['values'] = self.deviceseries_siemens #更新设备系列选项
-            self.channeldriver['combobox']['values'] = self.channeldriver_siemens   #更新通道驱动选项
-            self.deviceseries['var'].set(self.deviceseries_siemens[0])  #设置默认值
-            self.channeldriver['var'].set(self.channeldriver_siemens[0])    #设置默认值
-            self.db_num["frame"].grid() #显示DB块号输入框
-        if device == "AB" :
-            for row in self.template_table.get_children():
-                self.template_table.delete(row)
-            self.template_cb['var'].set("")
-            self.deviceseries['combobox']['values'] = self.deviceseries_ab
-            self.channeldriver['combobox']['values'] = self.channeldriver_ab
-            self.deviceseries['var'].set(self.deviceseries_ab[0])
-            self.channeldriver['var'].set(self.channeldriver_ab[0])
-            self.db_num["frame"].grid_remove()  #隐藏DB块号输入框
 
 
     def on_template_selected(self, event=None):
@@ -103,7 +84,7 @@ class MainUI:
             self.template_table.delete(row)
         try:
             for item in self.template_data:
-                self.template_table.insert('', 'end', values=(item['name'], item['desc'], item['type'], item['access'], item['address']))
+                self.template_table.insert('', 'end', values=(item['name'], item['desc'], item['type'], item['addbyte'], item['addbit']))
         except Exception as e:
             for row in self.template_table.get_children():
                 self.template_table.delete(row)
@@ -154,35 +135,15 @@ class MainUI:
         frame = ttk.LabelFrame(self.root, text="参数输入", padding=10)
         frame.pack(side='top', fill='x', padx=10, pady=5)
 
-        self.start_id = self._add_input(frame, "起始ID", row=0, col=0, inivar=1001) 
-        self.dev_name = self._add_input(frame, "设备名称", row=0, col=1, inivar="PLC1")
-        self.group_name = self._add_input(frame, "分组路径", row=0, col=2, inivar="TEST.一期")
-        self.group_name_en = self._add_combobox(frame, "设备分组", row=0, col=3, listbox=["禁用", "启用"])
+        self.channel = self._add_input(frame, "所属通道", row=0, col=0, inivar="S127", entry_width=10) 
+        self.dev_name = self._add_input(frame, "所属设备", row=0, col=1, inivar="PLC1", entry_width=10)
+        self.drive_siemens = ["PLC_SIEMENS_S7_1200_TCP"]
+        self.drive_ab = ["AB-ControlLogixTCP"]
+        self.drive = self._add_combobox(frame, "驱动", row=0, col=2, listbox=self.drive_siemens, width=25)
+        #self.drive["combobox"].bind('<<ComboboxSelected>>', self.on_link_selected)  # 选择完成事件   
+        self.db_num = self._add_input(frame, "DB块号", row=0, col=3, inivar="3", entry_width=5)
+        
 
-        self.link = self._add_combobox(frame, "采集链路", row=1, col=0, listbox=["以太网", "COM"])
-        #选择完成事件
-        self.link["combobox"].bind('<<ComboboxSelected>>', self.on_link_selected)
-        self.link_com = self._add_input(frame, "串口号", row=1, col=1, inivar="11")
-        self.link_ip = self._add_input(frame, "IP地址", row=1, col=1, inivar="192.168.10.11") 
-        
-        self.deviceseries_siemens = ["S7-1500", "S7-1200", "S7-300(TCP)"]
-        self.channeldriver_siemens = ["S71500Tcp", "S71200Tcp", "S7_TCP"]
-        self.deviceseries_ab = ["AB-ControlLogixTCP"]
-        self.channeldriver_ab = ["ControlLogix"]
-        self.deviceseries = self._add_combobox(frame, "设备系列", row=2, col=0, listbox=self.deviceseries_siemens)
-        self.channeldriver = self._add_combobox(frame, "通道驱动", row=2, col=1, listbox=self.channeldriver_siemens)
-        self.db_num = self._add_input(frame, "DB块号", row=2, col=2, inivar="3")
-        
-    def on_link_selected(self, event=None):
-        """链路选择完成事件"""
-        link_var = self.link["var"].get()
-        if link_var == "以太网" :
-            self.link_com["frame"].grid_remove()
-            self.link_ip["frame"].grid()
-        if link_var == "COM" :
-            self.link_ip["frame"].grid_remove()
-            self.link_com["frame"].grid()
-        
     def _add_input(
             self, parent, label_text, 
             row, col=0, inivar="", 
@@ -276,18 +237,12 @@ class MainUI:
             return
 
         inputs = {
-            "start_id": self.start_id["var"].get(), #起始ID
-            "ip": self.link_ip["var"].get(),
-            "device_name": self.dev_name["var"].get(),  #设备名称
-            "group_name": self.group_name["var"].get(), #分组路径
-            "link":self.link["var"].get(),  #链路选择
-            "link_ip":self.link_ip["var"].get(),    #IP地址
-            "link_com":self.link_com["var"].get(),  #串口号
-            "deviceseries": self.deviceseries["var"].get(), #设备系类
-            "channeldriver": self.channeldriver["var"].get(),   #通道驱动
+            "channel": self.channel["var"].get(), #所属通道
+            "dev_name": self.dev_name["var"].get(), #所属设备
+            "drive": self.drive["var"].get(),   #驱动
             "db_num": self.db_num["var"].get(),  #DB块号
+            
             "device": self.device_cb["var"].get(),  #设备类型
-            "group_name_en": self.group_name_en["var"].get()  #设备分组是否启用
         }
 
         output_path = self.csv_manager.generate_output(self.template_data, inputs)
