@@ -1,1 +1,1 @@
-pyinstaller -F -w main.py -n KingSCADA_Tag
+pyinstaller -F -w main.py -n BEWG_SED
